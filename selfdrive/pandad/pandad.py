@@ -141,9 +141,7 @@ def main() -> None:
         if first_run:
           # reset panda to ensure we're in a good state
           cloudlog.info(f"Resetting panda {panda.get_usb_serial()}")
-
-          # TODO: this hangs now, but nothing should've changed here
-          #panda.reset(reconnect=True)
+          panda.reset(reconnect=True)
 
       evt.clear()
       first_run = False
