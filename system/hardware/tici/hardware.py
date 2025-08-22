@@ -129,6 +129,8 @@ class Tici(HardwareBase):
       return
 
     value = int((percent / 100) * 300)
+    with open("/sys/class/leds/led:switch_2/brightness", "w") as f:
+      f.write(f"0\n")
     with open("/sys/class/leds/led:torch_2/brightness", "w") as f:
       f.write(f"{value}\n")
     with open("/sys/class/leds/led:switch_2/brightness", "w") as f:
