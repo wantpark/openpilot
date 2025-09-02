@@ -92,7 +92,6 @@ class PandaStateManager:
     ps.harnessStatus = health['car_harness_status']
     ps.interruptLoad = health['interrupt_load']
     ps.fanPower = health['fan_power']
-    ps.fanStallCount = health['fan_stall_count']
     ps.safetyRxChecksInvalid = bool(health['safety_rx_checks_invalid'])
     ps.spiErrorCount = health['spi_error_count']
     ps.sbu1Voltage = health['sbu1_voltage_mV'] / 1000.0
