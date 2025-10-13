@@ -28,6 +28,7 @@ KP = 1.0
 KI = 0.1
 KD = 0.0
 
+JERK_DT = 0.1 # [s] - assumes that all cars have a lag > 0.1 s 
 
 class LatControlTorque(LatControl):
   def __init__(self, CP, CI, dt):
@@ -39,6 +40,7 @@ class LatControlTorque(LatControl):
     self.update_limits()
     self.steering_angle_deadzone_deg = self.torque_params.steeringAngleDeadzoneDeg
     self.LATACCEL_REQUEST_BUFFER_NUM_FRAMES = int(1 / self.dt)
+    self.jerk_frames = int(JERK_DT / self.dt)
     self.requested_lateral_accel_buffer = deque([0.] * self.LATACCEL_REQUEST_BUFFER_NUM_FRAMES , maxlen=self.LATACCEL_REQUEST_BUFFER_NUM_FRAMES)
     self.previous_measurement = 0.0
     self.measurement_rate_filter = FirstOrderFilter(0.0, 1 / (2 * np.pi * (MAX_LAT_JERK_UP - 0.5)), self.dt)
@@ -66,27 +68,27 @@ class LatControlTorque(LatControl):
 
       delay_frames = int(np.clip(lat_delay / self.dt, 1, self.LATACCEL_REQUEST_BUFFER_NUM_FRAMES))
       expected_lateral_accel = self.requested_lateral_accel_buffer[-delay_frames]
+      jerk_frame_lateral_accel = self.requested_lateral_accel_buffer[-self.jerk_frames]
       # TODO factor out lateral jerk from error to later replace it with delay independent alternative
       future_desired_lateral_accel = desired_curvature * CS.vEgo ** 2
-      self.requested_lateral_accel_buffer.append(future_desired_lateral_accel)
       gravity_adjusted_future_lateral_accel = future_desired_lateral_accel - roll_compensation
-      desired_lateral_jerk = (future_desired_lateral_accel - expected_lateral_accel) / lat_delay
+      desired_lateral_jerk = (jerk_frame_lateral_accel - expected_lateral_accel) / JERK_DT
 
       measurement = measured_curvature * CS.vEgo ** 2
       measurement_rate = self.measurement_rate_filter.update((measurement - self.previous_measurement) / self.dt)
+      self.requested_lateral_accel_buffer.append(future_desired_lateral_accel)
       self.previous_measurement = measurement
 
       low_speed_factor = (np.interp(CS.vEgo, LOW_SPEED_X, LOW_SPEED_Y) / max(CS.vEgo, MIN_SPEED)) ** 2
-      setpoint = lat_delay * desired_lateral_jerk + expected_lateral_accel
+      setpoint = 0.1 * desired_lateral_jerk + expected_lateral_accel
       error = setpoint - measurement
-      error_lsf = error + low_speed_factor / self.torque_params.kp * error
+      error_lsf = error + low_speed_factor * error
 
       # do error correction in lateral acceleration space, convert at end to handle non-linear torque responses correctly
       pid_log.error = float(error_lsf)
       ff = gravity_adjusted_future_lateral_accel
       # latAccelOffset corrects roll compensation bias from device roll misalignment relative to car roll
       ff -= self.torque_params.latAccelOffset
-      # TODO jerk is weighted by lat_delay for legacy reasons, but should be made independent of it
       ff += get_friction(error, lateral_accel_deadzone, FRICTION_THRESHOLD, self.torque_params)
 
       freeze_integrator = steer_limited_by_safety or CS.steeringPressed or CS.vEgo < 5
