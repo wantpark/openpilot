@@ -29,6 +29,7 @@ KI = 0.1
 KD = 0.0
 
 JERK_DT = 0.1 # [s] - assumes that all cars have a lag > 0.1 s 
+K_JERK = 0.1
 
 class LatControlTorque(LatControl):
   def __init__(self, CP, CI, dt):
@@ -44,6 +45,7 @@ class LatControlTorque(LatControl):
     self.requested_lateral_accel_buffer = deque([0.] * self.LATACCEL_REQUEST_BUFFER_NUM_FRAMES , maxlen=self.LATACCEL_REQUEST_BUFFER_NUM_FRAMES)
     self.previous_measurement = 0.0
     self.measurement_rate_filter = FirstOrderFilter(0.0, 1 / (2 * np.pi * (MAX_LAT_JERK_UP - 0.5)), self.dt)
+    self.jerk_filter = FirstOrderFilter(0.0, 1 / (2 * np.pi * (MAX_LAT_JERK_UP)), self.dt)
 
   def update_live_torque_params(self, latAccelFactor, latAccelOffset, friction):
     self.torque_params.latAccelFactor = latAccelFactor
@@ -68,11 +70,11 @@ class LatControlTorque(LatControl):
 
       delay_frames = int(np.clip(lat_delay / self.dt, 1, self.LATACCEL_REQUEST_BUFFER_NUM_FRAMES))
       expected_lateral_accel = self.requested_lateral_accel_buffer[-delay_frames]
-      jerk_frame_lateral_accel = self.requested_lateral_accel_buffer[-self.jerk_frames]
+      raw_lateral_jerk = (self.requested_lateral_accel_buffer[-self.jerk_frames] - expected_lateral_accel) / JERK_DT
       # TODO factor out lateral jerk from error to later replace it with delay independent alternative
       future_desired_lateral_accel = desired_curvature * CS.vEgo ** 2
       gravity_adjusted_future_lateral_accel = future_desired_lateral_accel - roll_compensation
-      desired_lateral_jerk = (jerk_frame_lateral_accel - expected_lateral_accel) / JERK_DT
+      desired_lateral_jerk = self.jerk_filter.update(raw_lateral_jerk)
 
       measurement = measured_curvature * CS.vEgo ** 2
       measurement_rate = self.measurement_rate_filter.update((measurement - self.previous_measurement) / self.dt)
@@ -80,7 +82,7 @@ class LatControlTorque(LatControl):
       self.previous_measurement = measurement
 
       low_speed_factor = (np.interp(CS.vEgo, LOW_SPEED_X, LOW_SPEED_Y) / max(CS.vEgo, MIN_SPEED)) ** 2
-      setpoint = 0.1 * desired_lateral_jerk + expected_lateral_accel
+      setpoint = K_JERK * desired_lateral_jerk + expected_lateral_accel
       error = setpoint - measurement
       error_lsf = error + low_speed_factor * error
 
