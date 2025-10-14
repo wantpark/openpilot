@@ -28,7 +28,7 @@ KP = 1.0
 KI = 0.1
 KD = 0.0
 
-JERK_DT = 0.1 # [s] - assumes that all cars have a lag > 0.1 s 
+JERK_DT = 0.1 # [s] - assumes that all cars have a lag > 0.1 s
 K_JERK = 0.1
 
 class LatControlTorque(LatControl):
