@@ -27,7 +27,7 @@ LOW_SPEED_Y = [15, 13, 10, 5]
 
 # filter jerk and measurement rate with cutoff frequency equal jerk up limit
 JERK_FILTER_TAU_SECONDS = 1 / (2 * np.pi * MAX_LAT_JERK_UP)
-JERK_LOOKAHEAD_SECONDS = 0.15
+JERK_LOOKAHEAD_SECONDS = 0.19
 JERK_GAIN = 0.1
 LAT_ACCEL_REQUEST_BUFFER_SECONDS = 1.0
 
@@ -71,7 +71,7 @@ class LatControlTorque(LatControl):
 
       delay_frames = int(np.clip(lat_delay / self.dt, 1, self.lat_accel_request_buffer_len))
       expected_lateral_accel = self.lat_accel_request_buffer[-delay_frames]
-      lookahead_idx = -delay_frames + self.lookahead_frames
+      lookahead_idx = int(np.clip(-delay_frames + self.lookahead_frames, -self.lat_accel_request_buffer_len+1, -2))
       raw_lateral_jerk = (self.lat_accel_request_buffer[lookahead_idx+1] - self.lat_accel_request_buffer[lookahead_idx-1]) / (2 * self.dt) 
       desired_lateral_jerk = self.jerk_filter.update(raw_lateral_jerk)
       future_desired_lateral_accel = desired_curvature * CS.vEgo ** 2
