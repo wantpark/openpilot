@@ -38,8 +38,7 @@ class LatControlTorque(LatControl):
     self.torque_from_lateral_accel = CI.torque_from_lateral_accel()
     self.lateral_accel_from_torque = CI.lateral_accel_from_torque()
     k_p = [LOW_SPEED_INTERP_SPEEDS, LOW_SPEED_INTERP_KP + self.torque_params.kp]
-    self.pid = PIDController(k_p, self.torque_params.ki,
-                             k_f=self.torque_params.kf, rate=1/self.dt)
+    self.pid = PIDController(k_p, self.torque_params.ki, k_f=self.torque_params.kf, rate=1/self.dt)
     self.update_limits()
     self.steering_angle_deadzone_deg = self.torque_params.steeringAngleDeadzoneDeg
     self.lookahead_frames = int(JERK_LOOKAHEAD_SECONDS / self.dt)
