@@ -18,7 +18,7 @@ from openpilot.common.pid import PIDController
 
 # This controller applies torque to achieve desired lateral
 # accelerations. To compensate for the low speed effects we
-# use a LOW_SPEED_FACTOR in the proportional gain. Additionally, 
+# add a LOW_SPEED_FACTOR to the proportional gain. Additionally, 
 # there is friction in the steering wheel that needs to be overcome
 # to move it at all, this is compensated for too.
 
