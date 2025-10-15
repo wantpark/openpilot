@@ -18,12 +18,12 @@ from openpilot.common.pid import PIDController
 
 # This controller applies torque to achieve desired lateral
 # accelerations. To compensate for the low speed effects we
-# use a LOW_SPEED_FACTOR in the error. Additionally, there is
-# friction in the steering wheel that needs to be overcome to
-# move it at all, this is compensated for too.
+# use a LOW_SPEED_FACTOR in the proportional gain. Additionally, 
+# there is friction in the steering wheel that needs to be overcome
+# to move it at all, this is compensated for too.
 
-LOW_SPEED_X = [0, 10, 20, 30]
-LOW_SPEED_Y = [15, 13, 10, 5]
+LOW_SPEED_INTERP_SPEEDS = [1, 1.5, 2.0, 3.0, 5, 10, 20, 30]
+LOW_SPEED_INTERP_KP = np.array([250, 120, 65, 30, 10, 2.0, 0.3, 0.0])
 
 # filter jerk and measurement rate with cutoff frequency equal jerk up limit
 JERK_FILTER_TAU_SECONDS = 1 / (2 * np.pi * MAX_LAT_JERK_UP)
@@ -37,7 +37,8 @@ class LatControlTorque(LatControl):
     self.torque_params = CP.lateralTuning.torque.as_builder()
     self.torque_from_lateral_accel = CI.torque_from_lateral_accel()
     self.lateral_accel_from_torque = CI.lateral_accel_from_torque()
-    self.pid = PIDController(self.torque_params.kp, self.torque_params.ki,
+    k_p = [LOW_SPEED_INTERP_SPEEDS, LOW_SPEED_INTERP_KP + self.torque_params.kp]
+    self.pid = PIDController(k_p, self.torque_params.ki,
                              k_f=self.torque_params.kf, rate=1/self.dt)
     self.update_limits()
     self.steering_angle_deadzone_deg = self.torque_params.steeringAngleDeadzoneDeg
@@ -83,13 +84,11 @@ class LatControlTorque(LatControl):
       self.requested_lateral_accel_buffer.append(future_desired_lateral_accel)
       self.previous_measurement = measurement
 
-      low_speed_factor = (np.interp(CS.vEgo, LOW_SPEED_X, LOW_SPEED_Y) / max(CS.vEgo, MIN_SPEED)) ** 2
       setpoint = expected_lateral_accel
       error = setpoint - measurement
-      error_lsf = error + low_speed_factor * error
 
       # do error correction in lateral acceleration space, convert at end to handle non-linear torque responses correctly
-      pid_log.error = float(error_lsf)
+      pid_log.error = float(error)
       ff = gravity_adjusted_future_lateral_accel
       # latAccelOffset corrects roll compensation bias from device roll misalignment relative to car roll
       ff -= self.torque_params.latAccelOffset
