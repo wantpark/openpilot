@@ -31,7 +31,7 @@ KD = 0.0
 # filter jerk and measurement rate with cutoff frequency equal jerk up limit
 JERK_FILTER_TAU_SECONDS = 1 / (2 * np.pi * MAX_LAT_JERK_UP)
 JERK_LOOKAHEAD_SECONDS = 0.19
-JERK_GAIN = 0.1
+JERK_GAIN = 0.3
 LAT_ACCEL_REQUEST_BUFFER_SECONDS = 1.0
 
 class LatControlTorque(LatControl):
@@ -86,7 +86,7 @@ class LatControlTorque(LatControl):
 
       low_speed_factor = (np.interp(CS.vEgo, LOW_SPEED_X, LOW_SPEED_Y) / max(CS.vEgo, MIN_SPEED)) ** 2
       setpoint = expected_lateral_accel
-      error = setpoint - measurement
+      error = setpoint - measurement + JERK_GAIN * desired_lateral_jerk
       error_lsf = error + low_speed_factor * error
 
       # do error correction in lateral acceleration space, convert at end to handle non-linear torque responses correctly
@@ -95,8 +95,7 @@ class LatControlTorque(LatControl):
       # latAccelOffset corrects roll compensation bias from device roll misalignment relative to car roll
       ff -= self.torque_params.latAccelOffset
       # TODO remove lateral jerk from feed forward - moving it from error means jerk is not scaled by low speed factor
-      ff += JERK_GAIN * desired_lateral_jerk
-      ff += get_friction(error+JERK_GAIN*desired_lateral_jerk, lateral_accel_deadzone, FRICTION_THRESHOLD, self.torque_params)
+      ff += get_friction(error, lateral_accel_deadzone, FRICTION_THRESHOLD, self.torque_params)
 
       freeze_integrator = steer_limited_by_safety or CS.steeringPressed or CS.vEgo < 5
       output_lataccel = self.pid.update(pid_log.error,
