@@ -28,8 +28,8 @@ KP = 1.0
 KI = 0.1
 KD = 0.0
 
-# filter jerk and measurement rate with cutoff frequency equal jerk up limit
-JERK_FILTER_TAU_SECONDS = 1 / (2 * np.pi * MAX_LAT_JERK_UP)
+# filter jerk and measurement rate with cutoff frequency equal 0.5 jerk up limit
+LP_FILTER_CUTOFF_HZ = 1.3
 JERK_LOOKAHEAD_SECONDS = 0.19
 JERK_GAIN = 0.3
 LAT_ACCEL_REQUEST_BUFFER_SECONDS = 1.0
@@ -46,8 +46,8 @@ class LatControlTorque(LatControl):
     self.lookahead_frames = int(JERK_LOOKAHEAD_SECONDS / self.dt)
     self.lat_accel_request_buffer_len = int(LAT_ACCEL_REQUEST_BUFFER_SECONDS / self.dt)
     self.lat_accel_request_buffer = deque([0.] * self.lat_accel_request_buffer_len , maxlen=self.lat_accel_request_buffer_len)
-    self.jerk_filter = FirstOrderFilter(0.0, JERK_FILTER_TAU_SECONDS, self.dt)
-    self.measurement_rate_filter = FirstOrderFilter(0.0, JERK_FILTER_TAU_SECONDS, self.dt)
+    self.jerk_filter = FirstOrderFilter(0.0, 1 / (2 * np.pi * LP_FILTER_CUTOFF_HZ), self.dt)
+    self.measurement_rate_filter = FirstOrderFilter(0.0, 1 / (2 * np.pi * LP_FILTER_CUTOFF_HZ), self.dt)
     self.previous_measurement = 0.0
 
   def update_live_torque_params(self, latAccelFactor, latAccelOffset, friction):
@@ -79,6 +79,7 @@ class LatControlTorque(LatControl):
       future_desired_lateral_accel = desired_curvature * CS.vEgo ** 2
       self.lat_accel_request_buffer.append(future_desired_lateral_accel)
       gravity_adjusted_future_lateral_accel = future_desired_lateral_accel - roll_compensation
+      desired_lateral_jerk_old = desired_lateral_jerk = (future_desired_lateral_accel - expected_lateral_accel) / lat_delay
 
       measurement = measured_curvature * CS.vEgo ** 2
       measurement_rate = self.measurement_rate_filter.update((measurement - self.previous_measurement) / self.dt)
@@ -114,6 +115,7 @@ class LatControlTorque(LatControl):
       pid_log.actualLateralAccel = float(measurement)
       pid_log.desiredLateralAccel = float(setpoint)
       pid_log.desiredLateralJerk = float(desired_lateral_jerk)
+      pid_log.desiredLateralJerkOld = float(desired_lateral_jerk_old)
       pid_log.saturated = bool(self._check_saturation(self.steer_max - abs(output_torque) < 1e-3, CS, steer_limited_by_safety, curvature_limited))
 
     # TODO left is positive in this convention
