@@ -919,6 +919,7 @@ struct ControlsState @0x97ff69c53601abf1 {
     actualLateralAccel @9 :Float32;
     desiredLateralAccel @10 :Float32;
     desiredLateralJerk @11 :Float32;
+    desiredLateralJerkOld @12 :Float32;
    }
 
   struct LateralLQRState {
