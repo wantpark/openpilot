@@ -25,7 +25,7 @@ LOW_SPEED_X = [0, 10, 20, 30]
 LOW_SPEED_Y = [15, 13, 10, 5]
 KP = 1.0
 KI = 0.1
-KD = 0.0
+KD = 0.3
 
 # filter jerk and measurement rate with cutoff frequency equal 0.5 jerk up limit
 LP_FILTER_CUTOFF_HZ = 1.2
@@ -86,7 +86,7 @@ class LatControlTorque(LatControl):
       low_speed_factor = (np.interp(CS.vEgo, LOW_SPEED_X, LOW_SPEED_Y) / max(CS.vEgo, MIN_SPEED)) ** 2
       setpoint = expected_lateral_accel
       error = setpoint - measurement
-      error_lsf = error + low_speed_factor / self.torque_params.kp * error
+      error_lsf = error + low_speed_factor * error
       # do error correction in lateral acceleration space, convert at end to handle non-linear torque responses correctly
       pid_log.error = float(error_lsf)
       ff = gravity_adjusted_future_lateral_accel
