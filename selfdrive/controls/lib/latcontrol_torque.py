@@ -21,6 +21,7 @@ from openpilot.common.pid import PIDController
 # friction in the steering wheel that needs to be overcome to
 # move it at all, this is compensated for too.
 
+VERSION = "1.1"  # bump this after tuning controller
 LOW_SPEED_X = [0, 10, 20, 30]
 LOW_SPEED_Y = [15, 13, 10, 5]
 KP = 1.0
@@ -61,6 +62,7 @@ class LatControlTorque(LatControl):
 
   def update(self, active, CS, VM, params, steer_limited_by_safety, desired_curvature, curvature_limited, lat_delay):
     pid_log = log.ControlsState.LateralTorqueState.new_message()
+    pid_log.version = VERSION
     if not active:
       output_torque = 0.0
       pid_log.active = False
